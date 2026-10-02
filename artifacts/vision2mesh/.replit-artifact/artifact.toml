@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Vision2Mesh AI"
+description = "Reconstruct 3D models from blueprints, sketches, and images, then inspect and prepare them for export in an interactive workspace."
+version = "1.0.0"
+id = "artifacts/vision2mesh"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 25720
+
+[services.development]
+run = "pnpm --filter @workspace/vision2mesh run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/vision2mesh", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/vision2mesh/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "25720"
+BASE_PATH = "/"
