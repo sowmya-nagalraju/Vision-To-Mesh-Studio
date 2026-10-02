@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: reconstruction
+    description: Image-to-3D reconstruction operations
 paths:
   /healthz:
     get:
@@ -24,6 +26,122 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /reconstruction/images:
+    post:
+      operationId: uploadReconstructionImage
+      tags: [reconstruction]
+      summary: Upload an image for 3D reconstruction
+      description: Forwards an image to the connected mesh-generation service. Accepts PNG, JPEG, or WebP images up to 20 MB.
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        "201":
+          description: Image uploaded successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImageUpload"
+        "400":
+          description: Unsupported or invalid image
+        "502":
+          description: Image upload provider failed
+  /reconstruction/tasks:
+    post:
+      operationId: createReconstructionTask
+      tags: [reconstruction]
+      summary: Create a 3D reconstruction task
+      description: Creates a single-image reconstruction or a four-view photogrammetry reconstruction.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReconstructionRequest"
+      responses:
+        "202":
+          description: Reconstruction task accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReconstructionTask"
+        "400":
+          description: Invalid reconstruction request
+        "502":
+          description: Mesh-generation provider failed
+  /reconstruction/tasks/{taskId}:
+    get:
+      operationId: getReconstructionTask
+      tags: [reconstruction]
+      summary: Get reconstruction progress
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Current task state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReconstructionTask"
+        "404":
+          description: Task not found in this app session
+        "502":
+          description: Mesh-generation provider failed
+  /reconstruction/tasks/{taskId}/exports:
+    post:
+      operationId: createModelExport
+      tags: [reconstruction]
+      summary: Convert a generated model to another 3D format
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ModelExportRequest"
+      responses:
+        "202":
+          description: Model conversion task accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReconstructionTask"
+        "400":
+          description: Model is not ready or format is unsupported
+  /reconstruction/tasks/{taskId}/file:
+    get:
+      operationId: downloadReconstructionModel
+      tags: [reconstruction]
+      summary: Download a completed 3D model
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: 3D model file
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        "404":
+          description: Model file is not ready or has expired
 components:
   schemas:
     HealthStatus:
@@ -33,4 +151,56 @@ components:
           type: string
       required:
         - status
+    ImageUpload:
+      type: object
+      properties:
+        imageToken:
+          type: string
+      required:
+        - imageToken
+    ReconstructionRequest:
+      type: object
+      properties:
+        mode:
+          type: string
+          enum: [blueprint, sketch, character, animal, scan]
+        imageTokens:
+          type: array
+          minItems: 1
+          maxItems: 4
+          items:
+            type: string
+      required:
+        - mode
+        - imageTokens
+    ReconstructionTask:
+      type: object
+      properties:
+        taskId:
+          type: string
+        status:
+          type: string
+          enum: [queued, running, success, failed, banned, expired, cancelled]
+        progress:
+          type: integer
+          minimum: 0
+          maximum: 100
+        modelPath:
+          type: [string, "null"]
+        message:
+          type: [string, "null"]
+      required:
+        - taskId
+        - status
+        - progress
+        - modelPath
+        - message
+    ModelExportRequest:
+      type: object
+      properties:
+        format:
+          type: string
+          enum: [GLTF, USDZ, FBX, OBJ, STL, 3MF]
+      required:
+        - format
 
