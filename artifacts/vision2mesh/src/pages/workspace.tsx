@@ -16,7 +16,14 @@ const modes: { id: Mode; label: string; title: string; detail: string; icon: typ
 const scanAngles = ['Front', 'Left', 'Back', 'Right'];
 const exportFormats: ExportFormat[] = ['GLTF', 'USDZ', 'FBX', 'OBJ', 'STL', '3MF'];
 const isImage = (f: File) => ['image/png', 'image/jpeg', 'image/webp'].includes(f.type);
-const errorText = (error: unknown) => error instanceof Error ? error.message : 'Something went wrong. Please try again.';
+const errorText = (error: unknown) => {
+  const message = error instanceof Error ? error.message : '';
+  const status = typeof error === 'object' && error !== null && 'status' in error ? error.status : undefined;
+  if (status === 402 || /\b402\b|payment required|not enough credits?|insufficient credits?/i.test(message)) {
+    return 'Tripo3D says the connected account does not have enough credits for this request. Add credits to that Tripo3D account, then retry; your current inputs and model are preserved.';
+  }
+  return message || 'Something went wrong. Please try again.';
+};
 
 export default function Workspace() {
   const [mode, setMode] = useState<Mode>(() => {
@@ -279,7 +286,7 @@ export default function Workspace() {
     <main className="studio-shell">
       <header className="topbar">
         <a className="brand" href="/" aria-label="Vision2Mesh home" data-testid="link-home"><span className="brand-mark"><Box size={22} strokeWidth={1.8}/></span><span><b>vision<span>2</span>mesh</b><small>RECONSTRUCTION STUDIO</small></span></a>
-        <div className="topbar-center"><span className="live-dot"/><span data-testid="status-service">TRIPO ENGINE</span><span className="engine-ready">READY</span></div>
+         <div className="topbar-center" title="The Tripo3D connection is configured; credit balance is checked when a request starts."><span className="live-dot"/><span data-testid="status-service">TRIPO3D</span><span className="engine-ready">CONNECTED</span></div>
         <button className="theme-switch" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`} data-testid="button-theme">{theme === 'dark' ? <Sun size={17}/> : <Moon size={17}/>}<span>{theme === 'dark' ? 'Light mode' : 'Dark mode'}</span></button>
       </header>
       <div className="workspace">
