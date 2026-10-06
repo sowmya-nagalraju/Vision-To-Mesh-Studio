@@ -164,12 +164,10 @@ async function runReconstruction(taskId: string, image: StoredImage, removeBg: b
 // addresses, so the model address must be absolute or the 3D preview would ask the wrong server.
 function baseOf(req: Request): string {
   const host = req.get("host") ?? "";
+  const forwardedProto = req.get("x-forwarded-proto")?.split(",")[0]?.trim();
+  const protocol = forwardedProto || req.protocol;
 
-  if (/^(localhost|127\.0\.0\.1)(:\d+)?$/i.test(host)) {
-    return `${req.protocol}://${host}`;
-  }
-
-  return `${req.protocol}://${host}`;
+  return `${protocol}://${host}`;
 }
 
 function view(taskId: string, entry: TaskEntry, base = "") {
