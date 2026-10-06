@@ -14,13 +14,13 @@ const modes: { id: Mode; label: string; title: string; detail: string; icon: typ
   { id: 'scan', label: '3D Scan', title: 'Capture a subject', detail: 'Four angles. One coherent model.', icon: ScanLine, hint: 'Keep the subject centered and lighting consistent.' },
 ];
 const scanAngles = ['Front', 'Left', 'Back', 'Right'];
-const exportFormats: ExportFormat[] = ['GLTF', 'USDZ', 'FBX', 'OBJ', 'STL', '3MF'];
+const exportFormats: ExportFormat[] = ['GLTF', 'OBJ', 'STL'];
 const isImage = (f: File) => ['image/png', 'image/jpeg', 'image/webp'].includes(f.type);
 const errorText = (error: unknown) => {
   const message = error instanceof Error ? error.message : '';
   const status = typeof error === 'object' && error !== null && 'status' in error ? error.status : undefined;
-  if (status === 402 || /\b402\b|payment required|not enough credits?|insufficient credits?/i.test(message)) {
-    return 'Tripo3D says the connected account does not have enough credits for this request. Add credits to that Tripo3D account, then retry; your current inputs and model are preserved.';
+  if (status === 429 || /quota|too many requests/i.test(message)) {
+    return 'The free 3D server is busy or its GPU quota is used up. Wait a few minutes and retry, or add a free HF_TOKEN in Secrets for a larger quota. Your inputs are preserved.';
   }
   return message || 'Something went wrong. Please try again.';
 };
@@ -286,7 +286,7 @@ export default function Workspace() {
     <main className="studio-shell">
       <header className="topbar">
         <a className="brand" href="/" aria-label="Vision2Mesh home" data-testid="link-home"><span className="brand-mark"><Box size={22} strokeWidth={1.8}/></span><span><b>vision<span>2</span>mesh</b><small>RECONSTRUCTION STUDIO</small></span></a>
-         <div className="topbar-center" title="The Tripo3D connection is configured; credit balance is checked when a request starts."><span className="live-dot"/><span data-testid="status-service">TRIPO3D</span><span className="engine-ready">CONNECTED</span></div>
+         <div className="topbar-center" title="Free open-source TripoSR model, no paid credits."><span className="live-dot"/><span data-testid="status-service">TRIPOSR</span><span className="engine-ready">FREE</span></div>
         <button className="theme-switch" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`} data-testid="button-theme">{theme === 'dark' ? <Sun size={17}/> : <Moon size={17}/>}<span>{theme === 'dark' ? 'Light mode' : 'Dark mode'}</span></button>
       </header>
       <div className="workspace">
@@ -295,7 +295,7 @@ export default function Workspace() {
          <div className="mode-list" role="group" aria-label="Reconstruction mode">
             {modes.map((item, index) => <button key={item.id} type="button" aria-pressed={mode === item.id} disabled={working || exporting} className={`mode-option ${mode === item.id ? 'selected' : ''}`} onClick={() => selectMode(item.id)} data-testid={`button-mode-${item.id}`}><span className="mode-number">0{index + 1}</span><item.icon size={17}/><span>{item.label}</span>{mode === item.id && <ArrowRight size={15} className="mode-arrow"/>}</button>)}
           </div>
-         <div className="sidebar-foot"><span className="small-shield">i</span><span>Images are sent to Tripo3D to create your model. Avoid sensitive content.</span></div>
+         <div className="sidebar-foot"><span className="small-shield">i</span><span>Images are sent to a Hugging Face Space (TripoSR) to create your model. Avoid sensitive content.</span></div>
         </aside>
         <section className="studio-main">
           <div className="page-heading"><div><div className="eyebrow">{mode === 'scan' ? 'MULTI-VIEW CAPTURE' : 'IMAGE RECONSTRUCTION'} <span className="heading-slash">/</span> 01</div><h2>{activeMode.title}</h2><p>{activeMode.detail}</p></div><div className="heading-meta"><span className="meta-label">TASK STATUS</span><span className={`status-pill ${done ? 'complete' : working ? 'active' : failed ? 'error' : ''}`} data-testid="status-task"><i/>{failed ? 'Needs attention' : statusLabel}</span></div></div>
@@ -325,7 +325,7 @@ export default function Workspace() {
                   failed ? <div className="empty-work error-work" data-testid="status-task-error"><div className="empty-icon"><Activity size={23}/></div><span className="eyebrow">TASK INTERRUPTED</span><h4>That model didn’t finish.</h4><p>{task?.message || (taskQuery.isError ? errorText(taskQuery.error) : 'Try again with a clearer source image.')}</p><button className="text-action" onClick={() => { setTaskId(''); setMessage(''); }} data-testid="button-retry">Try again <ArrowRight size={14}/></button></div> :
                   <div className="empty-work"><div className="empty-icon"><Box size={25}/></div><span className="eyebrow">YOUR MODEL WILL APPEAR HERE</span><h4>One source. A new dimension.</h4><p>Add an image and start a reconstruction to see the returned model in your workspace.</p><div className="empty-spec"><span><Rotate3D size={14}/> Interactive view</span><span><ArrowDownToLine size={14}/> Model export</span></div></div>}
               </div>
-              <div className="result-footer"><div className="footer-model"><span className="footer-icon"><Box size={15}/></span><span><b>{done ? 'Reconstruction complete' : working ? 'Processing task' : 'No model loaded'}</b><small>{done ? `Task ${task?.taskId.slice(0, 12)}` : mode === 'blueprint' ? 'Interior geometry depends on the returned model.' : 'Returned geometry is shown as received.'}</small></span></div>{done && <span className="model-format">TRIPO · 3D</span>}</div>
+              <div className="result-footer"><div className="footer-model"><span className="footer-icon"><Box size={15}/></span><span><b>{done ? 'Reconstruction complete' : working ? 'Processing task' : 'No model loaded'}</b><small>{done ? `Task ${task?.taskId.slice(0, 12)}` : mode === 'blueprint' ? 'Interior geometry depends on the returned model.' : 'Returned geometry is shown as received.'}</small></span></div>{done && <span className="model-format">TRIPOSR · 3D</span>}</div>
             </section>
           </div>
           {cameraActive !== null && <div className="camera-overlay" role="dialog" aria-modal="true" aria-label={`Capture ${scanAngles[cameraActive]} view`} data-testid="dialog-camera"><div className="camera-dialog"><div className="camera-dialog-head"><span><Camera size={16}/>CAPTURE {scanAngles[cameraActive].toUpperCase()} VIEW</span><button onClick={() => setCameraActive(null)} aria-label="Close camera" data-testid="button-close-camera"><X size={17}/></button></div><div className="camera-feed"><video ref={videoRef} autoPlay playsInline muted data-testid="video-camera"/><span className="camera-guide"/></div><div className="camera-footer"><span>Frame the subject, then capture.</span><button onClick={captureCamera} data-testid="button-capture-photo"><Video size={15}/>Capture image</button></div></div></div>}

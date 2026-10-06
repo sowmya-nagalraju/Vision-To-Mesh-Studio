@@ -41,6 +41,8 @@
     "@replit/vite-plugin-cartographer": "catalog:",
     "@replit/vite-plugin-dev-banner": "catalog:",
     "@replit/vite-plugin-runtime-error-modal": "catalog:",
+    "@rollup/rollup-win32-x64-msvc": "4.63.6",
+    "@tailwindcss/oxide-win32-x64-msvc": "4.3.3",
     "@tailwindcss/typography": "^0.5.15",
     "@tailwindcss/vite": "catalog:",
     "@tanstack/react-query": "catalog:",
